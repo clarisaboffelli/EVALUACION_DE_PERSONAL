@@ -106,3 +106,47 @@ def cargar_fechas_capacitacion(ruta_csv="Fechas_capacitacion.csv"):
     return fechas
 
 
+def resultado_por_legajo(resultados):
+    """
+    Pide el legajo del usuario, comprueba si existe en resultados y mantiene el programa en ejecución
+    hasta que se ingrese un legajo registrado o el usuario elija finalizar.
+
+    Parametros:
+        resultados (dict): Diccionario de resultados por legajo.
+    
+    Retorna:
+        puntuacion (int/float/str): Puntuación obtenida por el usuario, o None si se finaliza el programa.
+    """
+    while True:
+        legajo = input("Ingrese su número de legajo (* para salir): ").strip()
+        if not legajo:
+            print("El legajo no puede estar vacío.")
+            continue
+
+        if legajo == "*":
+            print("Finalizando el programa.")
+            return
+
+        if not legajo.isdigit():
+            print("El legajo no puede contener letras ni caracteres no numéricos.")
+            continue
+
+        registro = resultados.get(legajo)
+        if registro is None:
+            print("El legajo no se encuentra en los resultados. Inténtelo de nuevo o ingrese * para salir.")
+            continue
+
+        nombre = registro.get("nombre")
+        puntuacion = registro.get("puntuacion")
+        print(f"Usuario: {nombre}")
+        print(f"Puntuación en la evaluación de personal: {puntuacion}")
+        return puntuacion
+
+# PROGRAMA PRINCIPAL-----------------------------------------------
+
+resultados = cargar_resultados_evaluacion()
+fechas_capacitacion = cargar_fechas_capacitacion()
+print("EVALUACION DE PERSONAL - MAINTECH.SA")
+print("Bienvenido al sistema de notificaciones de MAINTECH.SA")
+resultado_por_legajo(resultados)
+
