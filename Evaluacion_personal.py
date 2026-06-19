@@ -10,6 +10,8 @@ Versión: 1.0
 """
 
 import csv
+import sys
+from enum import Enum
 
 
 def cargar_resultados_evaluacion(ruta_csv="Resultados_evaluacion.csv"):
@@ -118,29 +120,85 @@ def resultado_por_legajo(resultados):
         puntuacion (int/float/str): Puntuación obtenida por el usuario, o None si se finaliza el programa.
     """
     while True:
-        legajo = input("Ingrese su número de legajo (* para salir): ").strip()
+        legajo = input("\nIngrese su número de legajo (* para salir): ").strip()
         if not legajo:
-            print("El legajo no puede estar vacío.")
+            print("\nEl legajo no puede estar vacío.")
             continue
 
         if legajo == "*":
-            print("Finalizando el programa.")
+            print("\nFinalizando el programa.")
             return
 
         if not legajo.isdigit():
-            print("El legajo no puede contener letras ni caracteres no numéricos.")
+            print("\nEl legajo no puede contener letras ni caracteres no numéricos.")
             continue
 
         registro = resultados.get(legajo)
         if registro is None:
-            print("El legajo no se encuentra en los resultados. Inténtelo de nuevo o ingrese * para salir.")
+            print("\nEl legajo no se encuentra en los resultados. Inténtelo de nuevo o ingrese * para salir.")
             continue
 
         nombre = registro.get("nombre")
         puntuacion = registro.get("puntuacion")
-        print(f"Usuario: {nombre}")
-        print(f"Puntuación en la evaluación de personal: {puntuacion}")
+        print(f"\nUsuario: {nombre}")
+        print(f"\nPuntuación en la evaluación de personal: {puntuacion}")
         return puntuacion
+
+
+class EstadoEvaluacion(Enum):
+    SUFICIENTE = "SUFICIENTE"
+    INSUFICIENTE = "INSUFICIENTE"
+
+
+PUNTUACION = 6
+
+
+def pedir_conformidad_insuficiente():
+    """Solicita conformidad para el estado insuficiente y devuelve True/False."""
+    opciones_validas = {
+        "SI": True,
+        "S": True,
+        "NO": False,
+        "N": False,
+    }
+
+    while True:
+        respuesta = input("\n¿Está conforme con el resultado? (Si/No): ").strip().upper()
+        if respuesta in opciones_validas:
+            return opciones_validas[respuesta]
+        print("Respuesta inválida. Ingrese Si o No.")
+
+
+def evaluar_estado_puntuacion(puntuacion):
+    """Evalúa la puntuación y maneja los estados SUFICIENTE e INSUFICIENTE."""
+    if not isinstance(puntuacion, (int, float)):
+        print("Puntuación inválida. No se puede determinar el estado.")
+        return None, None
+
+    if puntuacion >= PUNTUACION:
+        estado = EstadoEvaluacion.SUFICIENTE
+    else:
+        estado = EstadoEvaluacion.INSUFICIENTE
+
+    if estado == EstadoEvaluacion.SUFICIENTE:
+        print(
+            "Aprobo la evaluacion de personal. Su compromiso con el crecimiento de esta empresa es altamente valoradoo, "
+            "Recibira una bonificacion economia en su proxima liquidacion"
+        )
+        sys.exit(0)
+
+    conformidad = pedir_conformidad_insuficiente()
+    return estado, conformidad
+
+
+def evaluar_resultado_por_legajo(resultados):
+    """Obtiene la puntuación por legajo y aplica la máquina de estados de evaluación."""
+    puntuacion = resultado_por_legajo(resultados)
+    if puntuacion is None:
+        return None, None
+
+    return evaluar_estado_puntuacion(puntuacion)
+
 
 # PROGRAMA PRINCIPAL-----------------------------------------------
 
@@ -148,5 +206,11 @@ resultados = cargar_resultados_evaluacion()
 fechas_capacitacion = cargar_fechas_capacitacion()
 print("EVALUACION DE PERSONAL - MAINTECH.SA")
 print("Bienvenido al sistema de notificaciones de MAINTECH.SA")
-resultado_por_legajo(resultados)
+
+estado, conformidad = evaluar_resultado_por_legajo(resultados)
+if estado == EstadoEvaluacion.INSUFICIENTE:
+    if conformidad:
+        print("\nEl empleado aceptó la evaluación insuficiente y puede continuar con el proceso de capacitación.")
+    else:
+        print("\nEl empleado no está conforme con la evaluación. Por favor, diríjase a RRHH para una reunión.")
 
