@@ -63,14 +63,14 @@ def cargar_resultados_evaluacion(ruta_csv="Resultados_evaluacion.csv"):
 
 def cargar_fechas_capacitacion(ruta_csv="Fechas_capacitacion.csv"):
     """
-    Lee el archivo Fechas_capacitacion.csv y devuelve un diccionario por fecha de capacitación.
+    Lee el archivo Fechas_capacitacion.csv y devuelve una lista de fechas de capacitación.
 
     Parametros:
         ruta_csv (str): Ruta del archivo CSV que contiene las fechas de capacitación.
     Retorna:
-        fechas (dict): Diccionario con la información de las capacitaciones por fecha.
+        fechas (list): Lista con la información de las capacitaciones.
     """
-    fechas = {}
+    fechas = []
 
     try:
         with open(ruta_csv, encoding="utf-8", newline="") as archivo:
@@ -90,13 +90,14 @@ def cargar_fechas_capacitacion(ruta_csv="Fechas_capacitacion.csv"):
                 try:
                     cupos = int(cupos_texto)
                 except ValueError:
-                    cupos = cupos_texto
+                    continue
 
-                fechas[fecha] = {
+                fechas.append({
+                    "fecha": fecha,
                     "hora": hora,
                     "lugar": lugar,
                     "cupos": cupos,
-                }
+                })
 
     except FileNotFoundError:
         print(f"No se encontró el archivo: {ruta_csv}")
@@ -181,10 +182,7 @@ def evaluar_estado_puntuacion(puntuacion):
         estado = EstadoEvaluacion.INSUFICIENTE
 
     if estado == EstadoEvaluacion.SUFICIENTE:
-        print(
-            "Aprobo la evaluacion de personal. Su compromiso con el crecimiento de esta empresa es altamente valoradoo, "
-            "Recibira una bonificacion economia en su proxima liquidacion"
-        )
+        print("\nAprobó la evaluación de personal. Su compromiso con el crecimiento de esta empresa es altamente valorado.\nRecibirá una bonificación económica en su próxima liquidación.")
         sys.exit(0)
 
     conformidad = pedir_conformidad_insuficiente()
@@ -200,6 +198,73 @@ def evaluar_resultado_por_legajo(resultados):
     return evaluar_estado_puntuacion(puntuacion)
 
 
+def mostrar_opciones_capacitacion(fechas):
+    if not fechas:
+        print("\nNo hay capacitaciones disponibles en este momento.")
+        return
+    print("\nDebido a que su evaluación de desempeño rebeló algunas carencias, ponemos a su disposición las siguientes capacitaciones que le aydarán a mejorar su desempeño.")
+    print("\nCapacitaciones disponibles:")
+    for indice, opcion in enumerate(fechas, start=1):
+        estado_cupos = opcion["cupos"] if isinstance(opcion["cupos"], int) else "N/A"
+        print(
+            f"{indice}. Fecha: {opcion['fecha']} | Hora: {opcion['hora']} | Lugar: {opcion['lugar']} | Cupos: {estado_cupos}"
+        )
+
+
+def confirmar_seleccion():
+    opciones_validas = {
+        "SI": True,
+        "S": True,
+        "NO": False,
+        "N": False,
+    }
+
+    while True:
+        respuesta = input("\nConfirma esta seleccion? (Si/No): ").strip().upper()
+        if respuesta in opciones_validas:
+            return opciones_validas[respuesta]
+        print("Respuesta inválida. Ingrese Si o No.")
+
+
+def seleccionar_capacitacion(fechas):
+    if not fechas:
+        return None
+
+    while True:
+        mostrar_opciones_capacitacion(fechas)
+        seleccion = input("\nIngrese el número de la capacitación que desea elegir (* para cancelar): ").strip()
+        if seleccion == "*":
+            print("\nSelección cancelada.")
+            return None
+
+        if not seleccion.isdigit():
+            print("Entrada inválida. Ingrese un número válido.")
+            continue
+
+        indice = int(seleccion) - 1
+        if indice < 0 or indice >= len(fechas):
+            print("Número de capacitación inválido. Intente nuevamente.")
+            continue
+
+        opcion = fechas[indice]
+        if not isinstance(opcion["cupos"], int) or opcion["cupos"] <= 0:
+            print("La capacitación seleccionada no tiene cupos disponibles. Elija otra opción.")
+            continue
+
+        print(
+            f"\nSeleccionó:\n Fecha: {opcion['fecha']}\n Hora: {opcion['hora']}\n Lugar: {opcion['lugar']}\n Cupos disponibles: {opcion['cupos']}"
+        )
+
+        if confirmar_seleccion():
+            opcion["cupos"] -= 1
+            print(
+                f"\nReserva confirmada. Cupos restantes para esta capacitación: {opcion['cupos']}"
+            )
+            return opcion
+
+        print("\nNo se confirmó la selección. Puede elegir otra capacitación o cancelar.")
+
+
 # PROGRAMA PRINCIPAL-----------------------------------------------
 
 resultados = cargar_resultados_evaluacion()
@@ -210,7 +275,11 @@ print("Bienvenido al sistema de notificaciones de MAINTECH.SA")
 estado, conformidad = evaluar_resultado_por_legajo(resultados)
 if estado == EstadoEvaluacion.INSUFICIENTE:
     if conformidad:
-        print("\nEl empleado aceptó la evaluación insuficiente y puede continuar con el proceso de capacitación.")
+        seleccion = seleccionar_capacitacion(fechas_capacitacion)
+        if seleccion is not None:
+            print(
+                f"\nSeleccion confirmada: Fecha {seleccion['fecha']}, Hora {seleccion['hora']}, Lugar {seleccion['lugar']}. "
+                f"Se ha reducido el cupo disponible a {seleccion['cupos']}"
+            )
     else:
-        print("\nEl empleado no está conforme con la evaluación. Por favor, diríjase a RRHH para una reunión.")
-
+        print("\nLos resultados de la evaluación de personal no te parecen aceptables. Por favor, comunicate con RRHH para una saber como seguir con el procedimiento.")
