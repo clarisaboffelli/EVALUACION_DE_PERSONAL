@@ -1,18 +1,20 @@
 """
-Programa: EVALUACION DE PERSONAL
+Programa: EVALUACION DE PERSONAL MAINTECH.SA
 Descripción: El programa EVALUACIÓN DE PERSONAL permite a los empleados de la empresa MAINTECH.SA consultar los resultados de la evaluación de personal realizada por el responsable de su área. El ingreso al sistema se realiza a través del número de legajo del empleado -compuesto por 4 números- lo que permite al usuario visualizar el puntaje obtenido. Si el puntaje no es suficiente para los estándares buscados, se solicita al usuario la conformidad con dicho resultado. Si da conformidad, el usuario programa la fecha de capacitación. Si no da conformidad, se le solicita que concurra a RRHH para una reunión.
 El programa obtiene la información de dos archivos:
 Resultados_evaluacion.csv: contiene la información de identificación de los empleados sometidos a evaluación con la estructura legajo;nombre;puntuación. Este archivo es suministrado por el evaluador.
 Fechas_capacitacion.csv: contiene la información de las fechas de capacitación y los cupos disponibles organizados con el siguiente orden: fecha;hora;lugar;cupos. Este archivo es suministrado por RRHH.
-Autor: Clarisa Boffelli - 
+Autor: Agustín Leonel Steniberg - Clarisa Maria Boffelli
 Fecha: 16 de junio de 2026
 Versión: 1.0
 """
+# Importacion de modulos ------------------------------------
 
 import csv
 import sys
 from enum import Enum
 
+# Funciones de carga de datos --------------------------------
 
 def cargar_resultados_evaluacion(ruta_csv="Resultados_evaluacion.csv"):
     """
@@ -37,6 +39,11 @@ def cargar_resultados_evaluacion(ruta_csv="Resultados_evaluacion.csv"):
                 puntuacion_texto = fila[2].strip()
 
                 if not legajo:
+                    continue
+
+                # Validar que el legajo sea numérico y tenga exactamente 4 caracteres
+                if not legajo.isdigit() or len(legajo) != 4:
+                    print(f"Advertencia: línea {linea_num}: legajo inválido '{legajo}' (se requiere 4 dígitos). Se omitirá la entrada.")
                     continue
 
                 try:
@@ -108,6 +115,7 @@ def cargar_fechas_capacitacion(ruta_csv="Fechas_capacitacion.csv"):
 
     return fechas
 
+# Funciones operativas -----------------------------------
 
 def resultado_por_legajo(resultados):
     """
@@ -128,10 +136,15 @@ def resultado_por_legajo(resultados):
 
         if legajo == "*":
             print("\nFinalizando el programa.")
-            return
+            return None, None
 
         if not legajo.isdigit():
             print("\nEl legajo no puede contener letras ni caracteres no numéricos.")
+            continue
+
+        # Requerir exactamente 4 dígitos para el legajo y rechazar entradas más largas o más cortas
+        if len(legajo) != 4:
+            print("\nEl número de legajo debe tener exactamente 4 dígitos.")
             continue
 
         registro = resultados.get(legajo)
@@ -143,9 +156,9 @@ def resultado_por_legajo(resultados):
         puntuacion = registro.get("puntuacion")
         print(f"\nUsuario: {nombre}")
         print(f"\nPuntuación en la evaluación de personal: {puntuacion}")
-        return puntuacion
+        return legajo, puntuacion
 
-
+# Máquina de estados de evaluación --------------------------------
 class EstadoEvaluacion(Enum):
     SUFICIENTE = "SUFICIENTE"
     INSUFICIENTE = "INSUFICIENTE"
@@ -183,7 +196,8 @@ def evaluar_estado_puntuacion(puntuacion):
 
     if estado == EstadoEvaluacion.SUFICIENTE:
         print("\nAprobó la evaluación de personal. Su compromiso con el crecimiento de esta empresa es altamente valorado.\nRecibirá una bonificación económica en su próxima liquidación.")
-        sys.exit(0)
+        # No terminar el programa aquí; retornar para que el flujo principal pueda seguir ejecutándose.
+        return estado, None
 
     conformidad = pedir_conformidad_insuficiente()
     return estado, conformidad
@@ -191,13 +205,14 @@ def evaluar_estado_puntuacion(puntuacion):
 
 def evaluar_resultado_por_legajo(resultados):
     """Obtiene la puntuación por legajo y aplica la máquina de estados de evaluación."""
-    puntuacion = resultado_por_legajo(resultados)
-    if puntuacion is None:
-        return None, None
+    legajo, puntuacion = resultado_por_legajo(resultados)
+    if legajo is None:
+        return None, None, None
 
-    return evaluar_estado_puntuacion(puntuacion)
+    estado, conformidad = evaluar_estado_puntuacion(puntuacion)
+    return legajo, estado, conformidad
 
-
+# Funciones de gestión de capacitaciones --------------------------------
 def mostrar_opciones_capacitacion(fechas):
     if not fechas:
         print("\nNo hay capacitaciones disponibles en este momento.")
@@ -220,7 +235,7 @@ def confirmar_seleccion():
     }
 
     while True:
-        respuesta = input("\nConfirma esta seleccion? (Si/No): ").strip().upper()
+        respuesta = input("¿Confirma esta seleccion? (Si/No): ").strip().upper()
         if respuesta in opciones_validas:
             return opciones_validas[respuesta]
         print("Respuesta inválida. Ingrese Si o No.")
@@ -258,7 +273,7 @@ def seleccionar_capacitacion(fechas):
         if confirmar_seleccion():
             opcion["cupos"] -= 1
             print(
-                f"\nReserva confirmada. Cupos restantes para esta capacitación: {opcion['cupos']}"
+                f"\nReserva confirmada. Lo esperamos en la capacitación el día {opcion['fecha']} a las {opcion['hora']} h en {opcion['lugar']}."
             )
             return opcion
 
@@ -267,19 +282,49 @@ def seleccionar_capacitacion(fechas):
 
 # PROGRAMA PRINCIPAL-----------------------------------------------
 
-resultados = cargar_resultados_evaluacion()
-fechas_capacitacion = cargar_fechas_capacitacion()
-print("EVALUACION DE PERSONAL - MAINTECH.SA")
-print("Bienvenido al sistema de notificaciones de MAINTECH.SA")
+def main():
+    resultados = cargar_resultados_evaluacion()
+    fechas_capacitacion = cargar_fechas_capacitacion()
+    print("EVALUACION DE PERSONAL - MAINTECH.SA")
+    print("Bienvenido al sistema de notificaciones de MAINTECH.SA")
 
-estado, conformidad = evaluar_resultado_por_legajo(resultados)
-if estado == EstadoEvaluacion.INSUFICIENTE:
-    if conformidad:
-        seleccion = seleccionar_capacitacion(fechas_capacitacion)
-        if seleccion is not None:
-            print(
-                f"\nSeleccion confirmada: Fecha {seleccion['fecha']}, Hora {seleccion['hora']}, Lugar {seleccion['lugar']}. "
-                f"Se ha reducido el cupo disponible a {seleccion['cupos']}"
-            )
-    else:
-        print("\nLos resultados de la evaluación de personal no te parecen aceptables. Por favor, comunicate con RRHH para una saber como seguir con el procedimiento.")
+    # Bucle principal: permitir ingresar múltiples legajos hasta que el usuario elija salir
+    # Registro de reservas: legajo -> selección
+    reservas = {}
+
+    while True:
+        legajo, estado, conformidad = evaluar_resultado_por_legajo(resultados)
+
+        # Si el usuario solicitó salir (resultado_por_legajo devolvió None), terminar el bucle
+        if legajo is None and estado is None and conformidad is None:
+            print("\nSaliendo del sistema. Hasta luego.")
+            break
+
+        # Si aprobó, continuar para permitir nuevo ingreso de legajo
+        if estado == EstadoEvaluacion.SUFICIENTE:
+            continue
+
+        # Si el estado es insuficiente, gestionar conformidad y posible inscripción a capacitación
+        if estado == EstadoEvaluacion.INSUFICIENTE:
+            if conformidad:
+                # Evitar que el mismo legajo reserve más de una capacitación
+                if legajo in reservas:
+                    seleccion_prev = reservas[legajo]
+                    print(
+                        f"\nAdvertencia: el legajo {legajo} ya reservó la capacitación del día {seleccion_prev['fecha']} a las {seleccion_prev['hora']} en {seleccion_prev['lugar']}.")
+                    continue
+
+                seleccion = seleccionar_capacitacion(fechas_capacitacion)
+                if seleccion is not None:
+                    # Registrar la reserva para impedir duplicados
+                    reservas[legajo] = seleccion
+                    print(
+                        f"\nSeleccion confirmada: Fecha {seleccion['fecha']}, Hora {seleccion['hora']}, Lugar {seleccion['lugar']}. "
+                        f"Se ha reducido el cupo disponible a {seleccion['cupos']}"
+                    )
+            else:
+                print("\nLos resultados de la evaluación de personal no le parecen aceptables. Por favor, comuníquese con RRHH para conocer los pasos a seguir.")
+
+
+if __name__ == "__main__":
+    main()
