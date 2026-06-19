@@ -280,6 +280,46 @@ def seleccionar_capacitacion(fechas):
         print("\nNo se confirmó la selección. Puede elegir otra capacitación o cancelar.")
 
 
+def mostrar_manual(ruta_manual="Manual_usuario.txt"):
+    """
+    Lee y muestra el contenido del manual del usuario desde Manual_usuario.txt.
+    
+    Parametros:
+        ruta_manual (str): Ruta al archivo del manual (por defecto Manual_usuario.txt).
+    """
+    try:
+        with open(ruta_manual, encoding="utf-8") as archivo:
+            contenido = archivo.read()
+            print("\n" + "="*80)
+            print(contenido)
+            print("="*80)
+            print("\nPara volver al menú principal, presione Enter.")
+            input()
+    except FileNotFoundError:
+        print(f"\nNo se encontró el archivo de manual: {ruta_manual}")
+    except Exception as error:
+        print(f"\nError al mostrar el manual: {error}")
+
+
+def consultar_manual():
+    """
+    Consulta al usuario si desea visualizar el manual del usuario al inicio.
+    Retorna True si desea verlo, False en caso contrario.
+    """
+    opciones_validas = {
+        "SI": True,
+        "S": True,
+        "NO": False,
+        "N": False,
+    }
+
+    while True:
+        respuesta = input("\n¿Desea visualizar el manual del usuario? (Si/No): ").strip().upper()
+        if respuesta in opciones_validas:
+            return opciones_validas[respuesta]
+        print("Respuesta inválida. Ingrese Si o No.")
+
+
 # PROGRAMA PRINCIPAL-----------------------------------------------
 
 def main():
@@ -287,6 +327,10 @@ def main():
     fechas_capacitacion = cargar_fechas_capacitacion()
     print("EVALUACION DE PERSONAL - MAINTECH.SA")
     print("Bienvenido al sistema de notificaciones de MAINTECH.SA")
+
+    # Consultar si el usuario desea ver el manual al inicio
+    if consultar_manual():
+        mostrar_manual()
 
     # Bucle principal: permitir ingresar múltiples legajos hasta que el usuario elija salir
     # Registro de reservas: legajo -> selección
